@@ -1,0 +1,10 @@
+{
+  "name": "campaign-desk-demo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Campaign Desk demo: prebuilt static site in site/.",
+  "scripts": {
+    "build": "echo 'prebuilt: site/ is committed'",
+    "start": "npx --yes serve site"
+  }
+}
