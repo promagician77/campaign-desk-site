@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Campaign Desk: Facebook inbox agent, content checks and Meta ads guardrails</title>
+<meta name="description" content="A working demo for a political consultant: an AI inbox agent for Facebook comments and Messenger, pre-publish checks for posts and political ads, and guarded Meta ads pacing. Fictional campaigns.">
+<link rel="preload" href="fonts/big-shoulders-display-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/public-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<a class="skip" href="#inbox">Skip to the inbox</a>
+<header class="mast">
+  <div class="wrap mast-row">
+    <p class="wordmark">Campaign Desk</p>
+    <p class="mast-note">Demo with three fictional campaigns. Nothing here posts to Facebook.</p>
+    <p class="clock" aria-live="polite"><span class="clock-label">Simulated clock</span> <time id="clock">Mon, Oct 26, 9:00 AM ET</time></p>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap" aria-labelledby="hero-title">
+  <div class="hero-copy">
+    <h1 id="hero-title">Three campaigns. One inbox agent. Nothing goes out unless two checks agree.</h1>
+    <p class="lede">Comments and Messenger DMs from three clients' Facebook Pages arrive through Meta's webhook. The agent answers what is safe to answer from fixed templates and approved positions, hides spam, and alerts a person to threats, press and voting misinformation. Everything else waits for you, with a draft ready.</p>
+    <p class="hero-actions">
+      <button class="btn btn-primary" id="play" type="button">Replay the final week</button>
+      <a class="btn btn-quiet" href="#rules">Read the 15 rules it follows</a>
+    </p>
+  </div>
+  <div class="tally" role="group" aria-labelledby="tally-title">
+    <h2 id="tally-title" class="tally-title">This replay so far</h2>
+    <div class="tally-grid">
+      <div class="tally-col" data-k="sent"><span class="tally-n" id="t-sent">0</span><span class="tally-l">answered automatically</span><svg class="marks" aria-hidden="true" id="m-sent"></svg></div>
+      <div class="tally-col" data-k="hidden"><span class="tally-n" id="t-hidden">0</span><span class="tally-l">hidden as spam, scams or abuse</span><svg class="marks" aria-hidden="true" id="m-hidden"></svg></div>
+      <div class="tally-col" data-k="alert"><span class="tally-n" id="t-alert">0</span><span class="tally-l">alerts to a person right away</span><svg class="marks" aria-hidden="true" id="m-alert"></svg></div>
+      <div class="tally-col" data-k="wait"><span class="tally-n" id="t-wait">0</span><span class="tally-l">waiting for you, draft ready</span><svg class="marks" aria-hidden="true" id="m-wait"></svg></div>
+    </div>
+    <p class="tally-foot" id="tally-foot">38 events from Oct 26 to Oct 28. Press replay, or type your own comment below.</p>
+  </div>
+</section>
+
+<section class="proof wrap" aria-labelledby="proof-title">
+  <h2 id="proof-title" class="visually-hidden">Measured</h2>
+  <ul class="proof-list">
+    <li><strong>1,200 signed events</strong> over real HTTP, each answered in 28 ms or less at the 95th percentile; 48 forged requests refused, 120 retries processed once.</li>
+    <li><strong>0 forbidden actions</strong> in 8,440 fuzz trials with the AI's opinion replaced by random answers; an agent without the checks made 7,716. On the stress set: 15, all where the rules had already misread the message.</li>
+    <li><strong>7 of 7 threats, press and misinformation</strong> reached a person on 32 hard messages written after the rules were frozen, where the rules alone got 4 right. 0 replies sent; 1 wrong action, a like on sarcasm.</li>
+    <li><strong>24 of 211</strong> real-looking payloads fail the signature if the JSON is re-serialized first (accents, emoji, links). Checking raw bytes verifies all 211.</li>
+    <li><strong>12 of 12</strong> planted post and ad mistakes caught, 0 of 12 clean ones flagged.</li>
+  </ul>
+</section>
+
+<section id="inbox" class="band" aria-labelledby="inbox-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="inbox-title">Inbox</h2>
+      <p>Pick any message to see what each check said, which rules applied, and the exact Graph API request. Approve drafts on the right.</p>
+    </div>
+    <div class="controls" role="toolbar" aria-label="Replay controls">
+      <button class="btn" id="step" type="button">Next event</button>
+      <button class="btn" id="runall" type="button">Run the rest</button>
+      <button class="btn" id="advance" type="button">Move the clock 25 hours</button>
+      <button class="btn" id="forge" type="button">Send a forged request</button>
+      <button class="btn btn-quiet" id="reset" type="button">Start over</button>
+      <label class="switch"><input type="checkbox" id="autolike" checked> Auto-like supportive comments</label>
+    </div>
+    <form class="compose" id="compose" aria-label="Send your own message">
+      <label class="f f-client"><span>Page</span><select id="c-client"><option value="whitfield">Dana Whitfield (candidate)</option><option value="measure12">Yes on Measure 12 (ballot measure committee)</option><option value="oyelaran">Marcus Oyelaran (incumbent councilmember)</option></select></label>
+      <label class="f f-ch"><span>Arrives as</span><select id="c-ch"><option value="c">Comment</option><option value="d">Messenger DM</option></select></label>
+      <label class="f f-text"><span>Message</span><input id="c-text" type="text" maxlength="400" autocomplete="off" placeholder="Try: where do I vote? or a reporter asking for comment"></label>
+      <button class="btn btn-primary" type="submit">Deliver to the webhook</button>
+    </form>
+    <div class="desk">
+      <div class="pane pane-stream">
+        <h3 class="pane-title">Events <span id="stream-count" class="count">0</span></h3>
+        <ol class="stream" id="stream" aria-live="polite"></ol>
+      </div>
+      <div class="pane pane-detail" id="detail" tabindex="-1">
+        <p class="empty">Nothing selected yet. Replay the week or deliver a message, then pick an event.</p>
+      </div>
+      <div class="pane pane-queue">
+        <h3 class="pane-title">Your queue <span id="queue-count" class="count">0</span></h3>
+        <div id="alerts"></div>
+        <ol class="queue" id="queue"></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="content" class="wrap section" aria-labelledby="content-title">
+  <div class="section-head">
+    <h2 id="content-title">Before a post or ad goes out</h2>
+    <p>The same boundaries apply to scheduled posts and political ads. Change anything and the checks run again.</p>
+  </div>
+  <div class="checker">
+    <form class="checker-form" id="checker" aria-label="Post and ad checker">
+      <div class="presets" role="group" aria-label="Examples">
+        <span class="presets-l">Try an example:</span>
+        <button class="chip-btn" type="button" data-preset="slip">Wrong client named</button>
+        <button class="chip-btn" type="button" data-preset="hours">Voting hours, no source</button>
+        <button class="chip-btn" type="button" data-preset="lateAd">New ad in the final week</button>
+        <button class="chip-btn" type="button" data-preset="aiAd">Realistic AI image</button>
+      </div>
+      <label class="f"><span>Client</span><select id="k-client"><option value="whitfield">Dana Whitfield (candidate)</option><option value="measure12">Yes on Measure 12 (ballot measure committee)</option><option value="oyelaran">Marcus Oyelaran (incumbent councilmember)</option></select></label>
+      <fieldset class="f seg"><legend>What is it?</legend>
+        <label><input type="radio" name="k-kind" value="post" checked> Page post</label>
+        <label><input type="radio" name="k-kind" value="ad"> Political ad</label>
+      </fieldset>
+      <label class="f"><span>Text</span><textarea id="k-text" rows="3">Town hall Thursday at the library. Bring your questions about county roads. https://whitfieldforharlow.example/events</textarea></label>
+      <label class="f post-only"><span>Publish</span><select id="k-when"><option value="5">in 5 minutes</option><option value="120" selected>in 2 hours</option><option value="4320">in 3 days</option><option value="64800">in 45 days</option></select></label>
+      <div class="ad-only" hidden>
+        <label class="f"><span>Launch</span><select id="k-launch"><option value="2">Mon Oct 26, before the restriction period</option><option value="50">Wed Oct 28, inside the restriction period</option></select></label>
+        <label class="check"><input type="checkbox" id="k-impression"> This ad already had an impression before Oct 27</label>
+        <label class="check"><input type="checkbox" id="k-ie"> Also target Ireland</label>
+        <label class="check"><input type="checkbox" id="k-ai"> Uses a realistic AI-made image of people or events</label>
+        <label class="check"><input type="checkbox" id="k-genai"> Use Meta's generative AI creative tools</label>
+      </div>
+    </form>
+    <div class="checker-out">
+      <h3 class="pane-title" id="k-verdict" aria-live="polite">Ready to schedule</h3>
+      <ul class="checks" id="k-checks"></ul>
+      <details class="req"><summary>Graph API request it would send</summary><pre id="k-req"></pre></details>
+    </div>
+  </div>
+</section>
+
+<section id="ads" class="band" aria-labelledby="ads-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="ads-title">Moving ad budget without resetting Meta's learning</h2>
+      <p>Four ad sets, $600 a day, 21 days, in a simulated market where one ad set wears out on day 10 and another improves. Averages over 400 runs.</p>
+    </div>
+    <div class="pacing">
+      <figure class="chart" id="chart" aria-labelledby="chart-cap">
+        <figcaption id="chart-cap">Cumulative volunteer sign-ups by day</figcaption>
+        <ul class="legend" id="legend"></ul>
+        <div class="chart-box"><svg id="chart-svg" role="img" aria-label="Line chart of cumulative sign-ups for three budget strategies over 21 days" tabindex="0"></svg><div class="tip" id="tip" hidden></div></div>
+        <details class="table-view"><summary>Show the numbers as a table</summary><div id="chart-table"></div></details>
+      </figure>
+      <div class="pacing-notes">
+        <dl class="stats">
+          <div><dt>Guarded sampling</dt><dd>948 sign-ups, $13.31 each, 0 learning resets</dd></div>
+          <div><dt>Even split</dt><dd>863 sign-ups, $14.63 each, 0 resets</dd></div>
+          <div><dt>Chase yesterday's best</dt><dd>802 sign-ups, $15.77 each, 25.4 resets on average</dd></div>
+        </dl>
+        <p>The guarded strategy moved budget toward what was working (10% more sign-ups than an even split) but never changed an ad set by more than 20% in a day, so it caused no learning resets. Chasing yesterday's winner swung budgets up to 267% and kept ad sets relearning.</p>
+        <p class="fine">The market, its costs and the 30% penalty while relearning are assumptions written into the simulation, so these numbers test the decision logic, not a forecast. If a campaign uses Advantage+ campaign budget, Meta moves money between its ad sets itself; this layer then paces across campaigns and enforces caps.</p>
+        <details class="req"><summary>Political campaign and creative requests, checked before sending</summary><pre>[
+  {
+    &quot;method&quot;: &quot;POST&quot;,
+    &quot;path&quot;: &quot;/v26.0/act_2000000000001/campaigns&quot;,
+    &quot;body&quot;: {
+      &quot;name&quot;: &quot;Roads first - Oct&quot;,
+      &quot;objective&quot;: &quot;OUTCOME_LEADS&quot;,
+      &quot;status&quot;: &quot;PAUSED&quot;,
+      &quot;special_ad_categories&quot;: [
+        &quot;ISSUES_ELECTIONS_POLITICS&quot;
+      ],
+      &quot;special_ad_category_country&quot;: [
+        &quot;US&quot;
+      ]
+    }
+  },
+  {
+    &quot;method&quot;: &quot;POST&quot;,
+    &quot;path&quot;: &quot;/v26.0/act_2000000000001/adcreatives&quot;,
+    &quot;body&quot;: {
+      &quot;name&quot;: &quot;Roads first - Oct creative&quot;,
+      &quot;object_story_spec&quot;: {
+        &quot;page_id&quot;: &quot;100000000000101&quot;,
+        &quot;link_data&quot;: {
+          &quot;message&quot;: &quot;Fix the roads without new county taxes.&quot;,
+          &quot;link&quot;: &quot;https://whitfieldforharlow.example&quot;
+        }
+      },
+      &quot;authorization_category&quot;: &quot;POLITICAL&quot;
+    }
+  }
+]</pre></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="watch" class="wrap section" aria-labelledby="watch-title">
+  <div class="section-head">
+    <h2 id="watch-title">Opponent ad watch</h2>
+    <p>Each morning the Ad Library API is pulled for opponents' Pages and compared with the day before. Spend comes from Meta as ranges.</p>
+  </div>
+  <pre class="query">https://graph.facebook.com/v26.0/ads_archive?ad_type=POLITICAL_AND_ISSUE_ADS&amp;ad_reached_countries=%5B%22US%22%5D&amp;search_page_ids=200000000000901%2C200000000000902%2C200000000000903&amp;ad_active_status=ALL&amp;fields=id%2Cpage_id%2Cpage_name%2Cbylines%2Cad_delivery_start_time%2Cad_creative_bodies%2Cspend%2Cimpressions%2Cdelivery_by_region%2Cdemographic_distribution%2Cad_snapshot_url</pre>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Opponent ad alerts">
+  <table class="alerts-table">
+    <thead><tr><th scope="col">Change</th><th scope="col">Opponent</th><th scope="col">Relevant to</th><th scope="col">Detail</th></tr></thead>
+    <tbody><tr><td>Spend jump</td><td>Harlow Taxpayers Alliance</td><td>Dana Whitfield</td><td>spend range $100–199 → $1,000–4,999</td></tr><tr><td>New region</td><td>Harlow Taxpayers Alliance</td><td>Dana Whitfield</td><td>Now also reaching Mill Valley</td></tr><tr><td>New ad</td><td>Elena Park for District 4</td><td>Marcus Oyelaran</td><td>&quot;Route 9 still late? Elena Park has a plan.&quot; (spend $100–199)</td></tr><tr><td>Different payer</td><td>Elena Park for District 4</td><td>Marcus Oyelaran</td><td>&quot;Paid for by&quot; shows Linden Falls Transit Riders PAC</td></tr><tr><td>New ad</td><td>Keep Port Avery Affordable</td><td>Yes on Measure 12</td><td>&quot;Retirees on fixed incomes cannot afford Measure 12.&quot; (spend $0–99)</td></tr></tbody>
+  </table>
+  </div>
+</section>
+
+<section id="rules" class="band" aria-labelledby="rules-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="rules-title">The rules it follows</h2>
+      <p>Rule IDs appear on every event in the inbox, so you can trace any action back to one of these.</p>
+    </div>
+    <div class="rules-cols">
+      <div>
+        <h3>Inbox</h3>
+        <dl class="rules"><div><dt><span class="rid">R1</span> Never answer itself</dt><dd>Comments by the Page and message echoes are ignored, so the agent cannot reply to its own replies.</dd></div><div><dt><span class="rid">R2</span> Threats go to a person at once</dt><dd>When the rules see a threat, the campaign manager is alerted and nothing is sent. The comment is hidden only when both checks agree, and the payload is kept. When only the model sees one, it goes to the top of your queue.</dd></div><div><dt><span class="rid">R3</span> Press goes to comms</dt><dd>Reporters get a person. A DM gets a short holding reply inside the 24-hour window when both checks agree.</dd></div><div><dt><span class="rid">R4</span> Voting misinformation is corrected with the official source</dt><dd>Comms is alerted, and when both checks agree the reply points to vote.gov. The comment is never hidden automatically.</dd></div><div><dt><span class="rid">R5</span> Voting logistics only from a fixed template</dt><dd>Polling places, hours, ID and registration: the reply links to vote.gov. The model never writes dates, hours or places.</dd></div><div><dt><span class="rid">R6</span> Spam, scams and prompt injection</dt><dd>Hidden when both checks agree. Instructions inside a comment are treated as text, never followed.</dd></div><div><dt><span class="rid">R7</span> Abuse on an incumbent's page goes to a person</dt><dd>Candidate and committee pages can auto-hide insults. On an officeholder's page, hiding critics can count as state action (Lindke v. Freed, 2024), so a person decides.</dd></div><div><dt><span class="rid">R8</span> Criticism is never hidden</dt><dd>Disagreement and anything unclear goes to a person. No automatic reply.</dd></div><div><dt><span class="rid">R9</span> Policy answers wait for approval</dt><dd>Drafts use only the client's approved positions and always wait for a person to approve them.</dd></div><div><dt><span class="rid">R10</span> Two checks must agree</dt><dd>Nothing is sent or hidden without a person unless the rules and the model give the same intent.</dd></div><div><dt><span class="rid">R11</span> Messenger windows</dt><dd>Automated DMs only within 24 hours of the person's last message (up to 7 days after a click-to-Messenger ad). HUMAN_AGENT tag only on a person's reply within 7 days.</dd></div><div><dt><span class="rid">R12</span> One private reply per comment, within 7 days</dt><dd>Meta allows a single private reply to a comment, sent within 7 days of it.</dd></div><div><dt><span class="rid">R13</span> Right client, right links</dt><dd>Every link must be on that client's allowlist, and text may not name another client. The Page token must match the Page that received the event.</dd></div><div><dt><span class="rid">R14</span> Automated replies say so</dt><dd>The first automated DM in a thread says it is automated; automated public replies are tagged. California's bot law (SB 1001) covers bots used to influence a vote.</dd></div><div><dt><span class="rid">R15</span> Rate limit</dt><dd>At most 20 automated public replies per Page per hour; the rest wait for a person.</dd></div></dl>
+      </div>
+      <div>
+        <h3>Posts and ads</h3>
+        <dl class="rules"><div><dt><span class="rid">C1</span> Right client</dt><dd>Text may not name another client of the consultant, and the Page token must be this client's.</dd></div><div><dt><span class="rid">C2</span> Allowed links only</dt><dd>Every link must be on the client's allowlist.</dd></div><div><dt><span class="rid">C3</span> Voting details point to the official source</dt><dd>A post that gives a voting date, hours or method must link to vote.gov or the election office.</dd></div><div><dt><span class="rid">C4</span> Schedule window</dt><dd>Page posts can be scheduled 10 minutes to 30 days ahead (Pages API guide).</dd></div><div><dt><span class="rid">C5</span> Political category and disclaimer</dt><dd>Ads must use special_ad_categories ISSUES_ELECTIONS_POLITICS, a country, and the client's &quot;Paid for by&quot; disclaimer.</dd></div><div><dt><span class="rid">C6</span> AI media disclosure</dt><dd>Realistic AI-made or altered people, voices or events need authorization_category POLITICAL_WITH_DIGITALLY_CREATED_MEDIA.</dd></div><div><dt><span class="rid">C7</span> No Meta generative AI ad features</dt><dd>Meta's own generative AI ad creative tools are not available for these ads, so the build never requests them.</dd></div><div><dt><span class="rid">C8</span> No EU delivery</dt><dd>Meta stopped ads about social issues, elections or politics in the EU on Oct 6, 2025.</dd></div><div><dt><span class="rid">C9</span> Restriction period</dt><dd>New US political ads cannot launch during Meta's final-week restriction period unless they delivered an impression before it began.</dd></div></dl>
+        <h3>Where the rules come from</h3>
+        <ol class="sources"><li><a href="https://developers.facebook.com/documentation/business-messaging/messenger-platform/policy" rel="noopener">Messenger Platform policy: 24-hour window, up to 7 days after a click-to-Messenger ad, Human Agent, private replies, automation disclosure</a></li><li><a href="https://developers.facebook.com/documentation/business-messaging/messenger-platform/discovery/private-replies" rel="noopener">Private Replies: one message per comment, within 7 days</a></li><li><a href="https://developers.facebook.com/docs/graph-api/webhooks/getting-started" rel="noopener">Webhooks: X-Hub-Signature-256 on every event</a></li><li><a href="https://hookdeck.com/webhooks/skills/facebook-webhooks" rel="noopener">Meta signs an escaped-unicode form of the payload (Hookdeck guide)</a></li><li><a href="https://developers.facebook.com/documentation/pages-api/posts" rel="noopener">Pages API: schedule posts 10 minutes to 30 days ahead</a></li><li><a href="https://developers.facebook.com/docs/graph-api/reference/comment" rel="noopener">Comment node: is_hidden, MODERATE task, pages_manage_engagement</a></li><li><a href="https://developers.facebook.com/docs/marketing-api/audiences/special-ad-category" rel="noopener">Special Ad Categories: ISSUES_ELECTIONS_POLITICS, country, authorization_category</a></li><li><a href="https://about.fb.com/news/2026/02/meta-prepares-for-2026-us-midterms/" rel="noopener">Meta and the 2026 midterms: authorization, &quot;Paid for by&quot;, Ad Library for 7 years, restriction period from Oct 27, 2026</a></li><li><a href="https://transparency.meta.com/policies/ad-standards/SIEP-advertising/SIEP/" rel="noopener">Ads about social issues, elections or politics: AI disclosure, automated detection from June 1, 2026, no EU delivery</a></li><li><a href="https://about.fb.com/news/2025/07/ending-political-electoral-and-social-issue-advertising-in-the-eu/" rel="noopener">Meta ends political ads in the EU (Oct 6, 2025)</a></li><li><a href="https://adtestbench.com/guides/meta-ai-disclosure/" rel="noopener">Meta's own generative AI ad tools unavailable for political ads (summary of the Business Help Center, checked Sep 2026)</a></li><li><a href="https://developers.facebook.com/docs/graph-api/reference/ads_archive/" rel="noopener">Ad Library API (ads_archive)</a></li><li><a href="https://canons.sog.unc.edu/blog/2024/03/22/when-can-a-public-official-face-liability-for-blocking-users-or-deleting-comments-on-social-media-the-supreme-court-sets-a-new-test-in-lindke-v-freed/" rel="noopener">Lindke v. Freed (2024): when an official deleting comments is state action</a></li><li><a href="https://legiscan.com/CA/text/SB1001/2017" rel="noopener">California SB 1001: bots used to influence a vote</a></li><li><a href="https://ppc.land/learning-phase/" rel="noopener">Learning phase: about 50 optimization events in 7 days; large budget edits reset it</a></li><li><a href="https://developers.facebook.com/documentation/ads-commerce/ads-ai-connectors/ads-mcp-server/ads-mcp-server-overview" rel="noopener">Meta's ads MCP server (2026)</a></li></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="measured" class="wrap section" aria-labelledby="measured-title">
+  <div class="section-head">
+    <h2 id="measured-title">What was measured, and what was not</h2>
+  </div>
+  <div class="mm">
+    <div>
+      <h3>Measured</h3>
+      <ul>
+        <li>Held-out set (79 messages, written before the rules): rules 79/79, model 50/79. When both agreed (50 times) they were right 50 times. Through the full pipeline: 25 answered, 8 hidden, 18/18 threats, press and misinformation reached a person, 0 false alerts, 14 extra items flagged by the model alone, 0 wrong automatic actions, 0 requests refused by the mock Graph.</li>
+        <li>Stress set (32 messages with typos, sarcasm and leetspeak, written after the rules were frozen): rules 4/32, model 19/32, 0 replies sent, 7/7 threats, press and misinformation reached a person (all through the model's flag, since the rules missed them), 31 handed to a person, 1 wrong action.</li>
+        <li>Fuzz with random AI opinions and random timing: 8,440 trials on the normal sets gave 0 forbidden actions out of 384 taken; 1,280 trials on the stress set led to 15 automatic actions and 15 were wrong, each where the rules had misread the message and the random opinion happened to agree. A no-checks agent: 8,866.</li>
+        <li>Live HTTP: 1,368 requests at 16 at a time, 902 per second, acknowledgement p50 16.6 ms, p95 27.9 ms, p99 46.5 ms. Handshake correct, wrong verify token refused (403).</li>
+        <li>Unit tests on Meta's windows, private replies, tokens, signatures, checks and pacing: 28 of 28 pass; live HTTP test: 1 of 1.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Not measured</h3>
+      <ul>
+        <li>No real Facebook Page, Messenger thread or ad account was used. The Graph API is a mock that enforces the documented rules; its error codes are its own.</li>
+        <li>No language model ran. The second opinion here is a small Naive Bayes model trained on 132 example messages; the Claude and OpenAI adapters and the scoring script are included but were not run without a key.</li>
+        <li>All three message sets were written by the same author as the rules, so real comments will score lower. The stress result shows how it fails: to a person, not out loud.</li>
+        <li>The ad market is simulated with assumed costs. Real lift depends on the campaign.</li>
+        <li>Meta App Review, Business Verification and political ad authorization take time and are not shown.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Campaign Desk is a proposal demo. The candidates, measure, places, Pages and links are invented; links use the reserved .example domain. vote.gov is the real federal voter information site.</p>
+  </div>
+</footer>
+<script type="application/json" id="data">{"ads":{"even":{"name":"Even split","signups":862.7,"cpa":14.63,"resets":0,"maxEdit":0,"cumulative":[34.1,67.9,101.6,146.5,190.5,234.6,279,323.7,367.9,411.8,453,494.2,534.8,576.4,617,657.8,699.2,740.3,781.4,821.9,862.7]},"greedy":{"name":"Chase yesterday's best","signups":802.3,"cpa":15.77,"resets":25.38,"maxEdit":2.667,"cumulative":[34.1,67.9,107,146.2,185,228.5,272,314.7,355.9,397.6,433.1,469,505.5,541.7,579.1,616.4,653.2,690.4,727.4,764.7,802.3]},"guarded":{"name":"Guarded Thompson sampling","signups":948.1,"cpa":13.31,"resets":0,"maxEdit":0.2,"cumulative":[34.1,67.9,101.6,147.9,195.2,245.4,298,352.7,410.5,468.5,509.1,549.8,590.9,633.4,675.4,718.3,761.7,806.2,851.8,899.5,948.1]}}}</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
